@@ -1,6 +1,8 @@
 package main
 
 import (
+	//"github.com/chocopie116/goblueprints/chapter1/trace"
+	"../trace"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -11,6 +13,7 @@ type room struct {
 	join    chan *client
 	leave   chan *client
 	clients map[*client]bool
+	tracer  trace.Tracer
 }
 
 func newRoom() *room {
@@ -28,19 +31,24 @@ func (r *room) run() {
 		case client := <-r.join:
 			//join
 			r.clients[client] = true
+			r.tracer.Trace("新しいクライアントが参加しました")
 		case client := <-r.leave:
 			//leave
 			delete(r.clients, client)
 			close(client.send)
+			r.tracer.Trace("クライアントに送信しました")
 		case msg := <-r.forward:
+			r.tracer.Trace("メッセージを受信しました")
 			//broadcast
 			for client := range r.clients {
 				select {
 				case client.send <- msg:
 					//message
+					r.tracer.Trace("クライアントに送信しました")
 				default:
 					delete(r.clients, client)
 					close(client.send)
+					r.tracer.Trace("送信に失敗しました")
 				}
 			}
 		}
